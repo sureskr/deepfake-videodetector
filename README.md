@@ -18,6 +18,4 @@ A web-based application that uses advanced facial feature analysis to detect dee
 - **Frontend**: HTML, JavaScript
 - **Video Processing**: CV2
 
-## Installation
 
-1. Clone the repository
