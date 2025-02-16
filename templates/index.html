@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detector</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-8 text-gray-800">Deepfake Video Detector</h1>
+        
+        <!-- Upload Section -->
+        <div class="max-w-xl mx-auto bg-white rounded-lg shadow-md p-6 mb-8">
+            <form id="uploadForm" class="space-y-4">
+                <div class="flex items-center justify-center w-full">
+                    <label class="flex flex-col w-full h-32 border-4 border-dashed hover:bg-gray-100 hover:border-gray-300">
+                        <div class="flex flex-col items-center justify-center pt-7">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-gray-400 group-hover:text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                            </svg>
+                            <p class="pt-1 text-sm tracking-wider text-gray-400 group-hover:text-gray-600">
+                                Select a video</p>
+                        </div>
+                        <input type="file" class="opacity-0" accept="video/*" name="video" />
+                    </label>
+                </div>
+                <button type="submit" class="w-full px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                    Analyze Video
+                </button>
+            </form>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden">
+            <div class="flex justify-center items-center">
+                <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+            </div>
+            <p class="text-center mt-4 text-gray-600">Analyzing video...</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="hidden max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold mb-2">Analysis Results</h2>
+                <div id="resultBadge" class="inline-block px-4 py-2 rounded-full text-white font-semibold"></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-gray-50 p-4 rounded">
+                    <h3 class="font-semibold mb-2">Confidence Score</h3>
+                    <div class="text-3xl font-bold" id="confidenceScore"></div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded">
+                    <h3 class="font-semibold mb-2">Frames Analyzed</h3>
+                    <div class="text-3xl font-bold" id="framesAnalyzed"></div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <canvas id="probabilityChart"></canvas>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded mb-6">
+                <h3 class="font-semibold mb-2">Detailed Analysis</h3>
+                <ul id="analysisDetails" class="list-disc list-inside text-gray-600"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        let probabilityChart = null;
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            
+            // Show loading
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+            
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                // Update results
+                document.getElementById('confidenceScore').textContent = `${data.confidence}%`;
+                document.getElementById('framesAnalyzed').textContent = data.analysis.frames_analyzed;
+                
+                // Update result badge
+                const resultBadge = document.getElementById('resultBadge');
+                resultBadge.textContent = `${data.result.toUpperCase()}`;
+                resultBadge.className = `inline-block px-4 py-2 rounded-full text-white font-semibold ${data.result === 'fake' ? 'bg-red-500' : 'bg-green-500'}`;
+                
+                // Update analysis details
+                const detailsList = document.getElementById('analysisDetails');
+                detailsList.innerHTML = data.analysis.details.map(detail => `<li>${detail}</li>`).join('');
+                
+                // Update chart
+                if (probabilityChart) {
+                    probabilityChart.destroy();
+                }
+                const ctx = document.getElementById('probabilityChart').getContext('2d');
+                probabilityChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Fake', 'Real'],
+                        datasets: [{
+                            data: [data.probability_fake, data.probability_real],
+                            backgroundColor: ['#EF4444', '#10B981']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Probability Distribution'
+                            }
+                        }
+                    }
+                });
+                
+                // Show results
+                loading.classList.add('hidden');
+                results.classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error analyzing video');
+                loading.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html> 

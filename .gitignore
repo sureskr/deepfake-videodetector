@@ -1,0 +1,22 @@
+# Create .gitignore
+echo "# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+venv/
+
+# Video files
+*.mp4
+*.avi
+*.mov
+*.wmv
+
+# Keep uploads folder but ignore contents
+uploads/*
+!uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+" > .gitignore

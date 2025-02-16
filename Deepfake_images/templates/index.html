@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .upload-section {
+            text-align: center;
+            margin: 20px 0;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .real {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .fake {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .error {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        #loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        #preview {
+            max-width: 100%;
+            max-height: 300px;
+            margin: 20px auto;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Deepfake Detection</h1>
+        <div class="upload-section">
+            <input type="file" id="imageInput" accept="image/*">
+            <button onclick="detectDeepfake()">Analyze Image</button>
+        </div>
+        <img id="preview" alt="Preview">
+        <div id="loading">Analyzing image...</div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function showPreview(event) {
+            const preview = document.getElementById('preview');
+            preview.src = URL.createObjectURL(event.target.files[0]);
+            preview.style.display = 'block';
+        }
+
+        document.getElementById('imageInput').addEventListener('change', showPreview);
+
+        async function detectDeepfake() {
+            const fileInput = document.getElementById('imageInput');
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            
+            if (!fileInput.files.length) {
+                result.textContent = 'Please select an image first.';
+                result.className = 'error';
+                result.style.display = 'block';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                loading.style.display = 'block';
+                result.style.display = 'none';
+
+                const response = await fetch('/detect', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    result.textContent = `Error: ${data.error}`;
+                    result.className = 'error';
+                } else {
+                    let resultText = `Result: This image is ${data.result.toUpperCase()} (${data.confidence}% confidence)\n\n`;
+                    resultText += `Analysis:\n`;
+                    resultText += `• Confidence Level: ${data.analysis.confidence_level}\n`;
+                    resultText += `• Probability of being fake: ${data.analysis.probability_fake}%\n`;
+                    resultText += `• Probability of being real: ${data.analysis.probability_real}%\n\n`;
+                    resultText += `Detailed Analysis:\n`;
+                    data.analysis.analysis_details.forEach(detail => {
+                        resultText += `• ${detail}\n`;
+                    });
+                    resultText += `\nRecommendation: ${data.recommendation}`;
+                    
+                    result.textContent = resultText;
+                    result.className = data.result;
+                    result.style.whiteSpace = 'pre-line';  // Preserve line breaks
+                }
+            } catch (error) {
+                result.textContent = 'Error processing image';
+                result.className = 'error';
+            } finally {
+                loading.style.display = 'none';
+                result.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html> 
